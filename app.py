@@ -160,9 +160,9 @@ def create_user():
 
 
 
-@app.route('/users/<name:str>', methods=['PUT'])
+@app.route('/users/<name>', methods=['PUT'])
 @token_required
-def update_user(name=None):
+def update_user(name: str):
     """
     Aktualizuje uzivatele 
 
@@ -199,9 +199,9 @@ def update_user(name=None):
     return jsonify(res)
 
 
-@app.route('/users/<name:str>', methods=['DELETE'])
+@app.route('/users/<name>', methods=['DELETE'])
 @token_required
-def delete_user(name=None):
+def delete_user(name: str):
     """
     smaze uzivatele 
     

@@ -16,4 +16,4 @@ class StagingConfig(Config):
 class DevelopmentConfig(Config):
     DEBUG = True
     DEVELOPMENT = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///instance/demo.db'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///demo.db'
