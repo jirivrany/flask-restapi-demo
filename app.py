@@ -5,15 +5,13 @@ včetně routingu a metod HTTP.
 import os
 import jwt
 from dataclasses import dataclass
-from flask import Flask, request, make_response, jsonify
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from functools import wraps
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 
-import config
-
-VERSION = '0.0.2'
+VERSION = "0.0.3"
 
 
 app = Flask(__name__)
@@ -30,12 +28,13 @@ class User(db.Model):
 
     Model využívá dataclass - https://docs.python.org/3/library/dataclasses.html
     """
+
     id: int
     name: str
     about: str
 
-    id = db.Column(db.Integer, primary_key =True)
-    name = db.Column(db.String(100), unique=True, nullable = False)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
     about = db.Column(db.String(150), nullable=True)
 
     def __init__(self, name: str, about: str = None):
@@ -45,13 +44,13 @@ class User(db.Model):
 
 # Auth decorator
 
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
-        if "x-access-token" in request.headers:
-            token = request.headers["x-access-token"]
+        token = request.headers.get("x-access-token", None)
 
         if not token:
             return jsonify({"message": "auth token is missing"}), 401
@@ -68,7 +67,6 @@ def token_required(f):
     return decorated
 
 
-
 @app.route("/auth", methods=["GET"])
 def authorize():
     """
@@ -80,8 +78,8 @@ def authorize():
     jwt_key = app.config.get("JWT_SECRET")
     secret_key = app.config.get("SECRET_KEY")
 
-    user_key = request.headers.get('key', None)
-    
+    user_key = request.headers.get("key", None)
+
     if user_key == secret_key:
         payload = {
             "user": "api",
@@ -95,43 +93,45 @@ def authorize():
         return jsonify(payload), 403
 
 
-
-
-@app.route('/users')
+@app.route("/users")
 def get_users():
     """
     Vrati seznam vsech uzivatelu
     """
     users = User.query.all()
-    res = {"success": True, 'users': users, 'version': VERSION}
+    res = {"success": True, "users": users, "version": VERSION}
     return jsonify(res)
 
 
-@app.route('/users/<name>', methods=['GET'])
+@app.route("/users/<name>", methods=["GET"])
 @token_required
 def get_user_by_name(name=None):
     """
     Vrati uzivatele pokud je zadany parametr name a uzivatel existuje
 
     request headers:
-        x-access-token: secret 
+        x-access-token: secret
     """
     user = User.query.filter_by(name=name).first()
-    
-    res = {"success": True, "user": user} if user else {"success": False, "reason": f'user not found:{name}'}
+
+    res = (
+        {"success": True, "user": user}
+        if user
+        else {"success": False, "reason": f"user not found:{name}"}
+    )
 
     return jsonify(res)
 
 
-@app.route('/users', methods=['POST'])
+@app.route("/users", methods=["POST"])
 @token_required
 def create_user():
     """
-    Vytvori noveho uzivatele z json dat 
+    Vytvori noveho uzivatele z json dat
 
     request headers:
         content-type: application/json
-        x-access-token: secret 
+        x-access-token: secret
 
     request:body
         {
@@ -140,13 +140,13 @@ def create_user():
         }
     """
     user = request.get_json()
-    
-    #if not user or not user['name']:
+
+    # if not user or not user['name']:
     #    res = {"success": False,
     #           "reason": 'cannot create user (missing user name)'}
     #    return jsonify(res)
 
-    myuser = User(user.get('name', None), user.get('about', None))
+    myuser = User(user.get("name", None), user.get("about", None))
     try:
         db.session.add(myuser)
         db.session.commit()
@@ -154,24 +154,23 @@ def create_user():
         db.session.rollback()
         res = {"success": False, "reason": repr(err), "user": user}
         return jsonify(res)
-    
+
     res = {"success": True, "user": myuser}
     return jsonify(res)
 
 
-
-@app.route('/users/<name>', methods=['PUT'])
+@app.route("/users/<name>", methods=["PUT"])
 @token_required
 def update_user(name: str):
     """
-    Aktualizuje uzivatele 
+    Aktualizuje uzivatele
 
     request url:
-    v URL existujici jmeno  
+    v URL existujici jmeno
 
     request headers:
     content-type: application/json
-    x-access-token: secret 
+    x-access-token: secret
 
     request body:
      {
@@ -179,7 +178,7 @@ def update_user(name: str):
         "about": "Nova hodnota"
      }
 
-    """ 
+    """
     user = User.query.filter_by(name=name).first()
 
     update = request.get_json()
@@ -193,19 +192,23 @@ def update_user(name: str):
         except IntegrityError as err:
             db.session.rollback()
             res = {"success": False, "reason": repr(err), "user": user}
-            return jsonify(res)    
+            return jsonify(res)
 
-    res = {"success": True, "user": user } if user else {"success": False, "reason": f"user {name} not found"}
+    res = (
+        {"success": True, "user": user}
+        if user
+        else {"success": False, "reason": f"user {name} not found"}
+    )
     return jsonify(res)
 
 
-@app.route('/users/<name>', methods=['DELETE'])
+@app.route("/users/<name>", methods=["DELETE"])
 @token_required
 def delete_user(name: str):
     """
-    smaze uzivatele 
-    
-    request url: v URL existujici jmeno  
+    smaze uzivatele
+
+    request url: v URL existujici jmeno
     """
     user = User.query.filter_by(name=name).first()
 
@@ -215,7 +218,11 @@ def delete_user(name: str):
     except IndentationError as err:
         db.session.rollback()
         res = {"success": False, "reason": repr(err), "user": user}
-        return jsonify(res)  
+        return jsonify(res)
 
-    res = {"success": True, "user": user } if user else {"success": False, "reason": f"user {name} not found"}
+    res = (
+        {"success": True, "user": user}
+        if user
+        else {"success": False, "reason": f"user {name} not found"}
+    )
     return jsonify(res)
